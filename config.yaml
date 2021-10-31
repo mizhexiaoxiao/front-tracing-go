@@ -1,0 +1,6 @@
+fiber:
+  port: "3000"
+jaeger:
+  servicename: "front"
+  reporter:
+    collectorEndpoint: ""
