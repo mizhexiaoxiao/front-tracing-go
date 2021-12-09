@@ -3,9 +3,9 @@ package tracing
 import (
 	"errors"
 	"io"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/mizhexiaoxiao/front-tracing-go/common"
 	"github.com/mizhexiaoxiao/front-tracing-go/config"
 	"github.com/mizhexiaoxiao/front-tracing-go/logger"
 	"github.com/opentracing/opentracing-go"
@@ -26,15 +26,13 @@ func NewJaegerTracer() (opentracing.Tracer, io.Closer, error) {
 		},
 		Gen128Bit: true,
 		Reporter: &jaegercfg.ReporterConfig{
-			LogSpans:            true,
-			BufferFlushInterval: 1 * time.Second,
-			CollectorEndpoint:   collectorEndpoint,
+			LogSpans:          false,
+			CollectorEndpoint: collectorEndpoint,
 		},
 	}
 
 	zipkinPropagator := zipkin.NewZipkinB3HTTPHeaderPropagator()
 	tracer, closer, err := cfg.NewTracer(
-		//jaegercfg.Reporter(reporter),
 		jaegercfg.Injector(opentracing.HTTPHeaders, zipkinPropagator),
 		jaegercfg.Extractor(opentracing.HTTPHeaders, zipkinPropagator),
 	)
@@ -59,13 +57,16 @@ func spanCtxFromReq(tracer opentracing.Tracer, c *fiber.Ctx) (opentracing.SpanCo
 	)
 }
 
-func HandleSpan(tracer opentracing.Tracer, c *fiber.Ctx, operationName string, startTime time.Time, finishTime time.Time) error {
+func HandleSpan(tracer opentracing.Tracer, c *fiber.Ctx) error {
 	spanCtx, err := spanCtxFromReq(tracer, c)
 	if err != nil {
 		return errors.New("cannot extract spancontext from request headers")
 	}
-	span := tracer.StartSpan(operationName, opentracing.ChildOf(spanCtx), opentracing.StartTime(startTime))
-	logger.InfoLogger().Println(span)
+	api := " " + c.Query("api") //Solve the problem of string concurrency insecurity
+	startTime := common.StringToTime(c.Query("startTime"))
+	finishTime := common.StringToTime(c.Query("finishTime"))
+	span := tracer.StartSpan(api, opentracing.ChildOf(spanCtx), opentracing.StartTime(startTime))
 	span.FinishWithOptions(opentracing.FinishOptions{FinishTime: finishTime})
+	logger.InfoLogger().Println(span, api)
 	return nil
 }
