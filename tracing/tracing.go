@@ -14,12 +14,10 @@ import (
 	"github.com/uber/jaeger-client-go/zipkin"
 )
 
-func NewJaegerTracer() (opentracing.Tracer, io.Closer, error) {
+func NewJaegerTracer(serviceName string) (opentracing.Tracer, io.Closer, error) {
 	collectorEndpoint := config.JaegerCollectorEndpoint()
-	servicename := config.JaegerServiceName()
-
 	cfg := jaegercfg.Configuration{
-		ServiceName: servicename,
+		ServiceName: serviceName,
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:  jaeger.SamplerTypeConst,
 			Param: 1,
@@ -67,6 +65,35 @@ func HandleSpan(tracer opentracing.Tracer, c *fiber.Ctx) error {
 	finishTime := common.StringToTime(c.Query("finishTime"))
 	span := tracer.StartSpan(api, opentracing.ChildOf(spanCtx), opentracing.StartTime(startTime))
 	span.FinishWithOptions(opentracing.FinishOptions{FinishTime: finishTime})
+	logger.InfoLogger().Println(span, api)
+	return nil
+}
+
+func v2spanCtxFromReq(tracer opentracing.Tracer, value common.BodyArgs) (opentracing.SpanContext, error) {
+	traceHeader := map[string][]string{
+		"x-b3-traceid":      {value.TraceID},
+		"x-b3-spanid":       {value.SpanID},
+		"x-b3-parentspanid": {value.ParentSpanID},
+		"x-b3-sampled":      {value.Sampled},
+	}
+	return tracer.Extract(
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(traceHeader),
+	)
+}
+
+func V2HandleSpan(tracer opentracing.Tracer, value common.BodyArgs) error {
+	spanCtx, err := v2spanCtxFromReq(tracer, value)
+	if err != nil {
+		return errors.New("cannot extract spancontext from request headers")
+	}
+	api := value.Api
+	domain := value.Domain
+	startTime := common.StringToTime(value.StartTime)
+	finishTime := common.StringToTime(value.FinishTime)
+	span := tracer.StartSpan(api, opentracing.ChildOf(spanCtx), opentracing.StartTime(startTime))
+	span.FinishWithOptions(opentracing.FinishOptions{FinishTime: finishTime})
+	span.SetTag("domian", domain)
 	logger.InfoLogger().Println(span, api)
 	return nil
 }
