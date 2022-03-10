@@ -33,7 +33,7 @@ func main() {
 		return nil
 	})
 
-	app.Post("/v2", func(c *fiber.Ctx) error {
+	app.Post("/trace", func(c *fiber.Ctx) error {
 		body := c.Body()
 		serviceName := c.Query("servicename", "front")
 		serviceName = serviceName + ".front"
@@ -67,7 +67,7 @@ func main() {
 					Data: errors,
 				})
 			}
-			if err := tracing.V2HandleSpan(tracer, value); err != nil {
+			if err := tracing.ExtractData(tracer, value); err != nil {
 				logger.InfoLogger().Println(err)
 				return c.Status(fiber.StatusInternalServerError).JSON(common.Response{
 					Code: fiber.StatusInternalServerError,
