@@ -11,6 +11,7 @@ type BodySlice []BodyArgs
 type BodyArgs struct {
 	Api          string               `body:"api" validate:"required"`
 	Domain       string               `body:"domain" validate:"required"`
+	Status       string               `body:"status"`
 	StartTime    string               `body:"startTime" validate:"required,len=13"`
 	FinishTime   string               `body:"finishTime" validate:"required,len=13"`
 	TraceID      string               `body:"traceid" validate:"required,len=32"`

@@ -58,6 +58,7 @@ func ExtractData(tracer opentracing.Tracer, value common.BodyArgs) error {
 
 	api := value.Api
 	domain := value.Domain
+	status := value.Status
 	timing := value.Timing
 
 	span := HandleSpan(tracer, api, spanCtx, value.StartTime, value.FinishTime)
@@ -67,6 +68,10 @@ func ExtractData(tracer opentracing.Tracer, value common.BodyArgs) error {
 	}
 
 	span.SetTag("domian", domain)
+
+	if status != "" {
+		span.SetTag("status", status)
+	}
 
 	logger.InfoLogger().Println(span, api)
 	return nil
